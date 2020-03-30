@@ -1,0 +1,566 @@
+---
+title: "HarvardX: PH125.9x: Data Science: Capstone: Predict-Spreading-Coronavirus(COVID19)" 
+author: "Tarun Ch. Bordoloi"
+date: "3/30/2020"
+output:
+  pdf_document: default
+  html_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = 'center', cache=FALSE, cache.lazy = FALSE)
+```
+
+### 1.0 Executive summary:
+
+## 1.1 Background:
+The Project : Predict the Spreading of Coronavirus(COVID19)
+
+As advised under the ‘Project Overview: Choose Your Own!’ section Of the 'HarvardX: PH125.9x: Data Science: Capstone' I have  choosen the project – “Predict the Spreading of Coronavirus”  from Kaggle considering its very critical importance and contemporary relevance. I am aware that being an absolute beginner in the field of data analysis with my very basic knowledge it will be a challenging task. Further, due to very little historical as well as epidemiological data available at this point and also in the absence of adequate study on this novel Corona virus till date it is virtually impossible at this stage to offer a credible prediction of the nature and degree of its spread.Yet, I have volunteered to accept the challenge with lot of excitement.
+   
+COVID-19 Novel Coronavirus :
+
+The 2019–20 coronavirus pandemic is an ongoing pandemic of coronavirus disease 2019 (COVID-19) caused by severe acute respiratory syndrome coronavirus 2 (SARS-CoV-2).The outbreak was first identified in Wuhan, Hubei, China, in December 2019 and recognised as a pandemic by the World Health Organization (WHO) on 11 March 2020, as the first known pandemic that can be controlled.As of 27th March, over 5,50,000 cases of COVID-19 have been reported in more than 176 countries and territories, with major outbreaks in  United States, mainland China, Europe, Iran, and South Korea, among others,which include the cruise ship Diamond Princess.More than 25000 people have died from the disease and over 1,27,000 have recovered.
+The virus primarily spreads between people in a way similar to influenza, via respiratory droplets from coughing or sneezing.The time between exposure and symptom onset is typically five days, but may range from two to fourteen days.Symptoms are most often fever, dry cough, and shortness of breath.Complications may include pneumonia and acute respiratory distress syndrome. There is no vaccine or specific antiviral treatment, but research is ongoing. Efforts are aimed at managing symptoms and supportive therapy.
+Public health responses have included national pandemic preparedness and response plans,travel restrictions, quarantines, curfews, event postponements and cancellations, and facility closures.
+Effects of the pandemic include social and economic instability, xenophobia and racism, and the online spread of misinformation and conspiracy theories about the virus.(Source :Wikipedia)
+
+## 1.2 Summary goals:
+
+The outbreak of Covid-19 is developing into a major international crisis, and it's starting to influence important aspects of daily life. For example:
+•	Travel: Bans have been placed on hotspot countries, corporate travel has been stopped/reduced.
+•	Supply chains: International manufacturing operations have often had to throttle back production and many goods solely produced in China have been halted altogether.
+•	Grocery stores: In highly affected areas, people are starting to stock up on essential goods.
+
+A strong model that predicts how the virus could spread across different countries and regions may be able to help mitigation efforts. The goal of this task is to build a model that predicts the progression of the virus throughout March 2020
+
+## 1.3 The Data set :
+On 31 December 2019, WHO(World Health Organisation) was alerted to several cases of pneumonia in Wuhan City, Hubei Province of China. The virus did not match any other known virus. This raised concern because when a virus is new, it is not  known how it affects people.
+
+So daily level information on the affected people can give some interesting insights when it is made available to the broader data science community.
+
+Johns Hopkins University has made an excellent dashboard using the affected cases data. Data is extracted from the google sheets associated and made available here.
+
+These data are now taken from the Johns Hopkins Github repository where it is available as csv files .
+
+## 1.4 Key steps performed :
+
+•	Downloaded the datasets
+$ Ensured that the required packages and libraries are installed
+• Carried out the exploration of the data and performed feature engineering as required
+$ Included data visualization tools as required
+$ Incorporated insights gained
+•	Algorithm for 2 Models, namely 'Base Line' and 'FB Prophet Forecast', were developed and those were evaluated
+$ Results tabulated - with relevant section of the report
+•	Conclusion stated
+
+## 1.5 Installing the required packages, loading required libraries & downloading data :
+
+```{r include=FALSE, echo=FALSE}
+
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(data.table)) install.packages("data.table", repos = "http://cran.us.r-project.org")
+
+library(tidyverse)
+library(lubridate) 
+library(magrittr)
+library(gridExtra) 
+library(ggforce) 
+library(kableExtra) 
+library(leaflet) 
+library(caret)
+library(forecast)
+library(knitr)
+
+
+# Downloading data from  
+
+
+url_1 <- 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+
+tmp_filename <- tempfile()
+download.file(url_1,tmp_filename)
+covid_19_confirmed <- read_csv(tmp_filename)
+file.remove(tmp_filename)
+covid_19_confirmed
+dim(covid_19_confirmed)
+
+
+
+url_2 <- 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+
+
+tmp_filename <- tempfile()
+download.file(url_2,tmp_filename)
+covid_19_deaths <- read_csv(tmp_filename)
+file.remove(tmp_filename)
+covid_19_deaths
+dim(covid_19_deaths)
+
+url_3 <- 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+
+
+
+tmp_filename <- tempfile()
+download.file(url_3,tmp_filename)
+covid_19_recovered <- read_csv(tmp_filename)
+file.remove(tmp_filename)
+covid_19_recovered
+dim(covid_19_recovered)
+
+```
+Let us now have a glimpse of the data sets.
+Both 'covid_19_confirmed' and 'covid_19_deaths' data sets have 249 observations and 4 variables as follows ,  while the 'covid_19_recovered'  data set has 235 observations and  4 varibles as mentioned above :
+
+
+'Province/State'       <chr>
+'Country/Region'       <chr>
+'Latitude'             <dbl>
+'Longitude'            <dbl>
+
+Starting from column 5 of these data sets, each column corresponds to a single day these are <dbl>.
+
+We need to check the time frame of the data now.
+
+```{r echo=FALSE, include=TRUE}
+
+n_col <- ncol(covid_19_confirmed)
+dates <- names(covid_19_confirmed)[5:n_col]  %>% mdy()
+range(dates)
+
+min.date <- min(dates)
+min.date.txt <- min.date %>% format('%d %B %Y')
+min.date.txt
+
+
+max.date <- max(dates)
+max.date.txt <- max.date %>% format('%d %B %Y') 
+max.date.txt
+
+
+```
+It would appear that the data was last updated on the 27 March 2020 UTC at the point of compilation of this report finally.  All the stats and charts in this report are based on that data.
+
+### 2.0 Data Preparation :
+
+## 2.1 Data Cleaning & Feature engineering :
+We will now be carrying out the following operations –
+I.	Three data sets will be converted from wide to long format.
+II.	They will be aggregated by country.
+III.	Then they will be merged into a one single data set.
+
+
+```{r echo=FALSE, include=TRUE}
+
+cleanData <- function(data){
+  # Remove some columns
+  data %<>% select(-c('Province/State', 'Lat', 'Long'))%>% rename(country='Country/Region')
+  # convert from wide to long format
+  data %<>% gather(key = date,value = count, -country)
+  # convert from character to date
+  data %<>% mutate(date = date %>% mdy())
+  ## aggregate by country
+  data %<>% group_by(country, date) %>% summarise(count=sum(count)) %>% as.data.frame()
+  return(data)
+
+}
+
+```
+We shall now be cleaning the 3 data sets 
+
+```{r echo=FALSE, include=TRUE}
+
+covid_19_confirmed <- covid_19_confirmed %>% cleanData() %>% rename(confirmed = count)
+
+covid_19_deaths <- covid_19_deaths %>% cleanData() %>% rename(deaths = count )
+
+covid_19_recovered <- covid_19_recovered %>% cleanData() %>% rename(recovered = count)
+
+```
+
+We shall now be merging above 3 data sets into one by country and date
+
+```{r echo=FALSE, include=TRUE}
+
+covid_19 <- covid_19_confirmed %>% merge(covid_19_deaths) %>% merge(covid_19_recovered)
+
+# Now we need to exclude cruise ships from Country/ Region with confirmed cases
+
+countries <- covid_19 %>% pull(country) %>% setdiff('Cruise Ship')
+
+# First 10 records when it first broke out in China
+
+covid_19 %>% filter( country == 'China') %>% tail(10) %>%
+  knitr::kable(caption='Raw data, First 10 Columns only)')%>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+position = "center",
+font_size = 10,
+full_width = FALSE)
+
+```
+It would appear that in case of China where(Wuhan) the first instances were detected and it was spreading uncotrollably like wild fire , although the recorded number of total confirmed cases have risen to 81897 as of 27th March 2020 the remarkable observation is that the number of recovered cases has now been recorded at 74720 and very encouragingly death cases have more or less remained at 3296 during the same period.This would suggest that China has decisively managed to get the situation in her grip.This has raised and reaffirmed the hope that COVID19 is not invincible and it is important that China shares their experience with the rest of the world most of which are still grappling with the scourge of the virus so that they too can avail the benefit of their model.After all it is an issue where the entire humanity is getting threatened.  
+Data for the whole world :
+The raw data above provide the number of cases every day for every country. Those figures will now be aggregated to obtain the statistics of the whole world
+
+```{r echo=FALSE, include=TRUE}
+## counts for the whole world
+covid_19_world <- covid_19 %>% group_by(date) %>%
+summarise(country = 'World',
+confirmed = sum(confirmed,na.rm=T),
+deaths = sum(deaths,na.rm=T),
+recovered = sum(recovered,na.rm=T))
+
+covid_19 %<>% rbind(covid_19_world)
+## current confirmed cases
+covid_19%<>% mutate(current.confirmed = confirmed - deaths - recovered)
+head(covid_19, n = 10)
+tail(covid_19,n=10)
+  
+```
+If we now look at the whole world scenarion it is indeed alarming. Recorded confirmed cases have risen to 593291 and recorded recovered number has only been 22.07% at 130915 while number of deaths has been 4.60% at 27198 as on 27th Marcg 2020.However , it will be noteworthy that 73.34% of the confirmed cases at 435178 is remainining confirmed which would suggest that hopefully substanial number, if not all, of these cases too would recover with the advent of developing management/ treatment protocols. 
+
+
+### 3.0 Data Visualisation :
+Let us now visualise the data that we have tidied above
+
+## 3.1 Whole World Scenario :
+
+```{r echo=FALSE, include=TRUE }
+## sort by country and date
+covid_19 %<>% arrange(country, date)
+## daily increases of deaths and recovered cases
+## set NA to the increases on day1
+n <- nrow(covid_19)
+day1 <- min(covid_19$date)
+covid_19 %<>% mutate(new.confirmed = ifelse(date == day1, NA, confirmed - lag(confirmed, n=1)),
+new.deaths = ifelse(date == day1, NA, deaths - lag(deaths, n=1)),
+new.recovered = ifelse(date == day1, NA, recovered - lag(recovered, n=1)))
+## change negative number of new cases to zero
+covid_19 %<>% mutate(new.confirmed = ifelse(new.confirmed < 0, 0, new.confirmed),
+new.deaths = ifelse(new.deaths < 0, 0, new.deaths),
+new.recovered = ifelse(new.recovered < 0, 0, new.recovered))
+
+## convert from wide to long format, for drawing area plots
+data.long <- covid_19 %>%
+select(c(country, date, confirmed, current.confirmed, recovered, deaths)) %>%
+gather(key=type, value=count, -c(country, date))
+## set factor levels to show them in a desirable order
+data.long %<>% mutate(type=recode_factor(type, confirmed='Total Confirmed',
+current.confirmed='Current Confirmed',
+recovered='Recovered',
+deaths='Deaths'))
+
+world.long <- data.long %>% filter(country == 'World')
+
+world.long %>%
+ggplot(aes(x=date, y=count)) +
+geom_line(aes(color=type)) +
+labs(title=paste0('Numbers of Cases Worldwide (log scale) - ', max.date.txt)) +
+scale_color_manual(values=c('purple', 'red', 'green', 'black')) +
+theme(legend.title=element_blank(), legend.position='bottom',
+plot.title = element_text(size=12),
+axis.title.x=element_blank(),
+axis.title.y=element_blank(),
+legend.key.size=unit(1.0, 'cm'),
+legend.text=element_text(size=10),
+axis.text=element_text(size=10),
+axis.text.x=element_text(angle=45, hjust=1)) +
+scale_y_continuous(trans='log10')
+
+```
+
+## 3.2 Top countries :
+Following are the top 20 countries in confirmed cases
+
+```{r echo=FALSE, include=TRUE}
+
+top_20<- 20
+# ranking by confirmed cases
+covid_19_latest <- covid_19 %>% filter(date == max(date)) %>%
+select(country, date, confirmed, deaths, recovered, current.confirmed) %>%
+mutate(ranking = dense_rank(desc(confirmed)))
+# top 20 countries: 21 incl. 'World'
+top_countries <- covid_19_latest %>% filter(ranking <= top_20 + 1) %>%
+arrange(ranking) %>% pull(country) %>% as.character()
+top_countries %>% setdiff('World') %>% print()
+
+# add 'Others'
+top_countries %<>% c('Others')
+# put all others in a single group of 'Others'
+df <- covid_19_latest %>% filter(!is.na(country)) %>%
+mutate(country=ifelse(ranking <= top_20 + 1, as.character(country), 'Others')) %>%
+mutate(country=country)
+
+df %<>% group_by(country) %>%
+summarise(confirmed=sum(confirmed), deaths=sum(deaths),
+recovered=sum(recovered))
+
+df %<>% select(c(country, confirmed, recovered, deaths))
+
+#convert from wide to long format
+df.long <- df %>% filter(country!='World') %>%
+gather(key=type, value=count, -country)
+
+# set factor levels to show them with proper text and in a desirable order
+df.long %<>% mutate(type=recode_factor(type, confirmed='Confirmed',
+recovered='Recovered',
+deaths='Deaths',
+))
+
+## bar chart
+df.long %>% ggplot(aes(x=country, y=count, fill=country, group=country)) +
+geom_bar(stat='identity') +
+geom_text(aes(label=count, y=count), size=2, vjust=0) +
+xlab('') + ylab('') +
+labs(title=paste0('Top 20 Countries with Most Confirmed Cases - ', max.date.txt)) +
+scale_fill_discrete(name='Country', labels=df$txt) +
+theme(legend.title=element_blank(),
+legend.position='none',
+plot.title=element_text(size=11),
+axis.text=element_text(size=7),
+axis.text.x=element_text(angle=45, hjust=1)) +
+facet_wrap(~type, ncol=1, scales='free_y')
+
+```
+```{r echo=FALSE, include=TRUE}
+df.long %>% 
+knitr::kable(caption=paste0('Cases in Top 20 Countries - ', max.date.txt))%>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+position = "center",
+font_size = 10,
+full_width = FALSE)
+
+
+```
+Let us now look at the whole world scenarion again , generally , as it is developing.
+
+## 3.3 Visualising World scenario to add few more observations :
+
+```{r echo=FALSE, include=TRUE }
+# ## cases for the whole World- line plot - log scale
+
+## convert from wide to long format
+data.long <- covid_19 %>%
+select(c(country, date, confirmed, current.confirmed, recovered, deaths)) %>%
+gather(key=type, value=count, -c(country, date))
+
+## set factor levels to show them in a desirable order
+data.long %<>% mutate(type=recode_factor(type, confirmed='Confirmed',
+current.confirmed='Current Confirmed',
+recovered='Recovered',
+deaths='Deaths'))
+
+## plot: cases by type
+data.long %>% filter(country == 'World') %>% 
+ggplot(aes(x=date, y=count, color=type, size = 1.0)) +
+geom_line() +
+labs(title=paste0(' Whole World scenario - Numbers of COVID-19 Cases  - ',
+max.date.txt)) +
+geom_line()
+
+
+```
+It would appear that since 1st Feb.2020 number of confirmed cases world wide has been surging up ,quite significantly at that from around the 1st March 2020. The remaining confirmed cases would seem to have also been surging up quite significantly since about the 10th March 2020 after a declining trend during the period 15th February 2020 and the 7th March 2020.That could be due to the fact that the number of cases recovering would seem to have been increasing since the 15th Feb.2020. The number of deaths has been showing a constant to gradually increasing trend since about the 1st week of Feb. 2020. In my overall assesment these observations would suggest that the COVID 19 has been  assuming a  global pandemic proportion since about the early March 2020.
+
+
+## 3.4 Let us have a look at the China scenario , as that is where(Wuhan) the epicenter of this pandemic has been.
+  
+```{r echo=FALSE, include=TRUE}
+  ## convert from wide to long format
+data.long <- covid_19 %>%
+select(c(country, date, confirmed, current.confirmed, recovered, deaths)) %>%
+gather(key=type, value=count, -c(country, date))
+
+## set factor levels to show them in a desirable order
+data.long %<>% mutate(type=recode_factor(type, confirmed='Confirmed',
+current.confirmed='Current Confirmed',
+recovered='Recovered',
+deaths='Deaths'))
+
+## plot: cases by type
+data.long %>% filter(country == 'China') %>% 
+ggplot(aes(x=date, y=count, color=type, size = 1.0)) +
+geom_line() +
+labs(title=paste0(' Scenario of China - Numbers of COVID-19 Cases  - ',
+max.date.txt)) +
+geom_line()
+ 
+  
+
+```
+So far as China is concerned the number of confirmed cases seem to have plateued since about the first week of March 2020, after a steep increase since about the early Feb. 2020. Remaining confirmed cases too have started declining since about the 10th Feb. 2020.There has been an encouraging increase in cases recovered since about the 10th Feb 2020.The number of deaths although showing a increasing trend ,the rate of increase would seem to be small.This would suggest that China has been succeeding in getting the situation under their grip and COVID 19 is indeed not invincible.When the rest of the world is still grappling with a seriously emerging scenario in  order to deal with this mammoth challenge posed to the entire humanity China perhaps could offer to share their experience. 
+
+
+## 3.5 Italy Scenario :
+```{r echo=FALSE, include=TRUE}
+
+## convert from wide to long format
+data.long <- covid_19 %>%
+select(c(country, date, confirmed, current.confirmed, recovered, deaths)) %>%
+gather(key=type, value=count, -c(country, date))
+
+## set factor levels to show them in a desirable order
+data.long %<>% mutate(type=recode_factor(type, confirmed='Confirmed',
+current.confirmed='Current Confirmed',
+recovered='Recovered',
+deaths='Deaths'))
+
+## plot: cases by type
+data.long %>% filter(country == 'Italy') %>% 
+ggplot(aes(x=date, y=count, color=type, size = 1.0)) +
+geom_line() +
+labs(title=paste0(' Italy scenario - Numbers of COVID-19 Cases  - ',
+max.date.txt)) +
+geom_line()
+
+```
+So far Italy is concerned the number of confirmed cases as well as the remaining confirmed cases these seem to have been increasing quite rapidly since about the last week of Feb. 2020 and almost in similiar prportion. Further , the number of deathcases would seem to have been increasing significantly since about the first week of March 2020 and so is the case in respect of cases recovering, though not in comfortable numbers.
+
+## 3.6 Developing India Story :
+```{r echo=FALSE, include=TRUE}
+## convert from wide to long format
+data.long <- covid_19 %>%
+select(c(country, date, confirmed, current.confirmed, recovered, deaths)) %>%
+gather(key=type, value=count, -c(country, date))
+
+## set factor levels to show them in a desirable order
+data.long %<>% mutate(type=recode_factor(type, confirmed='Confirmed',
+current.confirmed='Current Confirmed',
+recovered='Recovered',
+deaths='Deaths'))
+
+## plot: cases by type
+data.long %>% filter(country == 'India') %>% 
+ggplot(aes(x=date, y=count, color=type, size = 1.0)) +
+geom_line() +
+labs(title=paste0(' India scenario - Numbers of COVID-19 Cases  - ',
+max.date.txt)) +
+geom_line()
+
+```
+So far as India is concerened the number of confirmed cases as well as remaining con firmed cases seem to have been surging up rapidly since about the 7th March 2020 and that too in somewhat  similiar numbers with cases of deaths and recovery in small numbers . There seem to have been some encouraging improvement in caseses recovered since about the 12th March 2020. This would suggest that although the inrese in rapidity of increase in confirmed cases as well as remaining confirmed cases has been a matter of serious concern the trend of improvement in number of cases recovering since about the 12th March 2020 is encouraging. 
+### 4.0 Building and evaluating  model for prdicting the spread of COVID 19:
+
+We shall be considering the China case since the developments there has been in somewhat advanced stage.
+
+## 4.1 : Base Line Model :
+In its simplest form this model is generated by considering the same value for 'new.confirmed' cases(every day addition of fresh cases) for all the days irrespective of different possible causes.All the differences explained by random variation. The formula would look like this:
+$Y = \hat{\mu} + \varepsilon$
+With $\hat{\mu}$ is the mean and $\varepsilon$ is the independent errors sampled from the same distribution centered at 0
+
+
+```{r echo=FALSE, include=TRUE}
+
+## Extracting only the China data from the 'covid_19' dataset
+
+df <- covid_19 %>% filter(country == 'China')
+good <- complete.cases(df) # Eliminating missing values if any
+df_1 <- df[good,]
+
+## Splitting the dataset into 'training' and 'validation' sets.
+
+set.seed(1, sample.kind="Rounding")
+
+covid_19_test_index <- createDataPartition(df_1$new.confirmed, times = 1, p = 0.1, list = FALSE)
+
+covid_19_train <- df_1[-covid_19_test_index,]
+validation <- df_1[covid_19_test_index,]
+head(covid_19_train, n=10)
+
+```
+Base Line model:
+
+```{r echo=FALSE, include=TRUE}
+
+## Getting average value of 'new.confirmed' accross all the dates
+
+mu_hat <- mean(covid_19_train$new.confirmed)
+mu_hat
+
+```
+If we predict all the  values of 'new.confirmed' cases  of the validation set  with $\hat{\mu}$ our RMSE will be as follows
+
+RMSE_BASE
+
+```{r echo=FALSE, include=TRUE}
+base_rmse <- RMSE(validation$new.confirmed,mu_hat)
+base_rmse
+
+```
+RMSE prediction is 1157.907. We shall see how our rest of the models fare incomparison to this Base Line Model.
+
+## 4.2 FB Prophet Forecast Model:
+Prophet is a procedure for forecasting time series data based on an additive model where non-linear trends are fit with yearly, weekly, and daily seasonality, plus holiday effects. It works best with time series that have strong seasonal effects and several seasons of historical data. Prophet is claimed to be robust to missing data and shifts in the trend, and typically handles outliers well.Prophet is again claimed to be robust to outliers, missing data, and dramatic changes in time series.The Prophet procedure includes many possibilities for users to tweak and adjust forecasts. One can use human-interpretable parameters to improve forecast by adding ones domain knowledge.One disadvantage in our this particular project could be absence of long term historical data. Even one years data would have helped.Althogh Prophet is meant for business operations for forecasts for planning and goal setting its features and capabilities prompts me to believe that it holds good promise of being a good tool for this kind of project .
+```{r echo=FALSE, include=TRUE}
+
+library(prophet)
+
+## Extracting only the China data from the 'covid_19' dataset
+
+df <- covid_19 %>% filter(country == 'China')%>% select(date,new.confirmed)
+good <- df[complete.cases(df), ]  ## Eliminating missing values if any
+str(good)
+
+df_1 %<>% mutate(ds = date, y = new.confirmed)
+head(df_1)
+
+```
+Let us plot
+
+```{r echo=FALSE, include=TRUE}
+plot(df_1$y)
+
+```
+```{r echo=FALSE, include=TRUE}
+data <- df_1
+data$y <- log(df_1$y)
+plot(data$y)
+
+```
+Let us fit the model on the data - 'df_1'
+
+```{r echo=FALSE, include=TRUE}
+m <- prophet(df_1)
+
+```
+Predictions can now be made on a data frame containing the dates for the forecast.
+
+```{r echo=FALSE, include=TRUE}
+future <- make_future_dataframe(m , periods = 15)
+
+head(future)
+tail(future, n = 20)
+
+```
+
+Lets predict.
+
+```{r echo=FALSE, include=TRUE}
+pred <- predict(m, future) 
+tail(pred)
+
+```
+```{r echo=FALSE, include=TRUE}
+plot(m, pred)
+
+```
+
+Plots and data above cleaarly shows the declining trend in the predictions upto 12th April 2020.Relatively speaking this looks like the most preferable model.
+
+
+
+### 5.0 CONCLUSION :
+On completion of my analysis I have arrived at the following conclusions :
+1.	These are still very early days to design an effective model for prediction of spread of COVID 19.
+We hope ongoing research will provide us some useful lead to pursue the analysis.
+2.	Precisely for the above reason there is hardly any predictor. Expect that in the coming days there will be several of those to enable a meaningful analysis.
+3.	Despite limitations the analysis leads us to believe that two scenarios , China and Italy, requires deeper study. The interesting question is how China got the situation under grip relatively sooner while in Italy it is getting bad to worse. There is further scope of analysis.
+4.	Under the constraint of the circumstances FB Prophet model seems to have performed better in terms of predicting the scenario till the 12th April 2020. However , its accuracy would be tested only after the event.
+Future work would entail testing few more models with more predictors and data.
+It would be interesting to work on the ARIMA model too.
+it may please be borne in mind that my analysis is based on the data available till the 27th March 2020. But , while checking different sections you will see that these data are getting regularly updated at the source.
+Stay safe and healthy !
+
